@@ -9,6 +9,8 @@ API](https://github.com/wukko/cobalt/blob/current/docs/API.md)
 
 Rewritten in golang for that extra perf™
 
+**Requires `ffmpeg` and `ffprobe`  in your PATH**
+
 ## Usage
 
 build the main file
