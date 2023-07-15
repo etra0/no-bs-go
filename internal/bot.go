@@ -59,6 +59,8 @@ func (bot *Bot) containsTiktokLink(msg string) *url.URL {
 		return nil
 	}
 
+	log.Println("Found tiktok link: ", *tiktok_link)
+
 	u, err := url.Parse(*tiktok_link)
 	if err != nil {
 		log.Println("Couldn't parse the URI ", *tiktok_link, " ", err)
