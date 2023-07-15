@@ -14,6 +14,9 @@ type Slideshow struct {
 	Audio  string
 }
 
+const IMAGE_DURATION = 3
+const TRANSITION_DURATION = 0.25
+
 // This will build a *Slideshow from a request. It will download the images and audio.
 // In case of failure of a single file, it'll give up and return an error.
 func NewSlideshowFromRequest(rawJson map[string]interface{}) (*Slideshow, error) {
@@ -76,7 +79,7 @@ func (slideshow *Slideshow) GenerateVideo() string {
 	args := make([]string, 0)
 
 	for _, image := range slideshow.Images {
-		args = append(args, "-loop", "1", "-t", "3", "-i", image)
+		args = append(args, "-loop", "1", "-t", strconv.Itoa(IMAGE_DURATION), "-i", image)
 	}
 
 	args = append(args, "-filter_complex")
@@ -90,11 +93,11 @@ func (slideshow *Slideshow) GenerateVideo() string {
 
 	// Then, we join all the images using the transition slideleft.
 	for i := 1; i < len(slideshow.Images); i++ {
-		filter = fmt.Sprintf("%s;%s[img%d]xfade=transition=slideleft:duration=0.5:offset=%f[f%d]", filter, last_out, i, 2.5*float32(i), i-1)
+		filter = fmt.Sprintf("%s;%s[img%d]xfade=transition=slideleft:duration=%f:offset=%f[f%d]", filter, last_out, i, TRANSITION_DURATION, (IMAGE_DURATION-TRANSITION_DURATION)*float32(i), i-1)
 		last_out = fmt.Sprintf("[f%d]", i-1)
 	}
 
-	args = append(args, filter[1:], "-map", last_out, "-r", "25", "-pix_fmt", "yuv420p", "-c:v", "libx264", "-an", "-y", firstPassVideo.Name())
+	args = append(args, filter[1:], "-map", last_out, "-r", "60", "-pix_fmt", "yuv420p", "-c:v", "libx264", "-an", "-y", firstPassVideo.Name())
 
 	log.Println("Generating first pass video...")
 	exec.Command("ffmpeg", args...).Run()
@@ -102,17 +105,28 @@ func (slideshow *Slideshow) GenerateVideo() string {
 	secondPassVideo, _ := os.CreateTemp("", "*.mp4")
 	secondPassVideo.Close()
 
-	// Now we have the first pass video. We need to add the audio.
-	// We need to choose between the audio and the video, depending on which one is longer.
+	// Now we have the first pass video. We need to add the audio. We need to choose between the audio and the
+	// video, depending on which one is longer.
 	longest := getLongestDuration(firstPassVideo.Name(), slideshow.Audio)
 	var secondPassArgs []string
 	switch longest {
 	case "audio":
-		// We need to add the audio to the video.
-		secondPassArgs = append(secondPassArgs, "-i", firstPassVideo.Name(), "-stream_loop", "-1", "-i", slideshow.Audio, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-shortest", "-y", secondPassVideo.Name())
+		// In cases where we only have two images, I find more useful to repeat the last frame for the rest of
+		// the video since most of the time the second image is the relevant one.
+		if len(slideshow.Images) == 2 {
+			secondPassArgs = append(secondPassArgs, "-i", firstPassVideo.Name(), "-i", slideshow.Audio, "-vf", "tpad=stop_mode=clone:stop_duration=999999999")
+		} else {
+			secondPassArgs = append(secondPassArgs, "-stream_loop", "-1", "-i", firstPassVideo.Name(), "-i", slideshow.Audio)
+		}
+		// In cases where the audio is longer than the video, we need to re-encode the video to match the audio.
+		secondPassArgs = append(secondPassArgs, "-shortest", "-fflags", "shortest", "-max_interleave_delta", "100M", "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-y", secondPassVideo.Name())
 	case "video":
-		secondPassArgs = append(secondPassArgs, "-stream_loop", "-1", "-i", firstPassVideo.Name(), "-i", slideshow.Audio, "-shortest", "-fflags", "shortest", "-max_interleave_delta", "100M", "-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264", "-y", secondPassVideo.Name())
+		secondPassArgs = append(secondPassArgs, "-i", firstPassVideo.Name(), "-stream_loop", "-1", "-i", slideshow.Audio)
+		// In the case the video is longer than the audio, we don't need to re-encode the video itself.
+		secondPassArgs = append(secondPassArgs, "-shortest", "-fflags", "shortest", "-max_interleave_delta", "100M", "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-y", secondPassVideo.Name())
 	}
+	// In here we use a lot of shenanigans to avoid some of the bufferings FFMPEG does, with the
+	// max_interleave_delta we make sure to avoid extending the video more than we need.
 	log.Println("Longest: ", longest, " Generating second pass video...")
 	exec.Command("ffmpeg", secondPassArgs...).Run()
 
