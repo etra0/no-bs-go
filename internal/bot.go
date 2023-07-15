@@ -23,11 +23,13 @@ type VideoMessage struct {
 }
 
 func (bot *Bot) HandleMessage(msg *tbot.Message, output_msg_chan chan<- *VideoMessage) {
-	result := bot.doRequest(msg.Text)
-	if result == nil {
+	tiktokLink := bot.containsTiktokLink(msg.Text)
+	if tiktokLink == nil {
 		log.Println("The message did not contain a tiktok link.")
 		return
 	}
+
+	result := bot.handleRequest(tiktokLink)
 
 	vConfig := tbot.NewVideo(msg.Chat.ID, tbot.FilePath(*result))
 	vConfig.ReplyToMessageID = msg.MessageID
@@ -36,7 +38,9 @@ func (bot *Bot) HandleMessage(msg *tbot.Message, output_msg_chan chan<- *VideoMe
 	output_msg_chan <- &output_msg
 }
 
-func (bot *Bot) doRequest(msg string) *string {
+// If no tiktok link is found, it'll return a nil pointer.
+// Otherwise, an URL pointer is returned.
+func (bot *Bot) containsTiktokLink(msg string) *url.URL {
 	words := strings.Split(msg, " ")
 
 	var tiktok_link *string = nil
@@ -57,7 +61,7 @@ func (bot *Bot) doRequest(msg string) *string {
 		return nil
 	}
 
-	return bot.handleRequest(u)
+	return u
 }
 
 // This function handles if the url is either a stream or a picker, and returns
