@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 type Slideshow struct {
@@ -48,7 +49,9 @@ func getDuration(file string) float32 {
 	args := []string{"-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file}
 	cmd := exec.Command("ffprobe", args...)
 	out, _ := cmd.Output()
-	parsedValue, _ := strconv.ParseFloat(string(out), 32)
+	stringFloat := strings.TrimSpace(string(out))
+	parsedValue, _ := strconv.ParseFloat(stringFloat, 32)
+	log.Println("Duration: ", float32(parsedValue))
 	return float32(parsedValue)
 }
 
