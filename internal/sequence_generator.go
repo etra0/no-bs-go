@@ -114,7 +114,8 @@ func (slideshow *Slideshow) GenerateVideo() string {
 		// In cases where we only have two images, I find more useful to repeat the last frame for the rest of
 		// the video since most of the time the second image is the relevant one.
 		if len(slideshow.Images) == 2 {
-			secondPassArgs = append(secondPassArgs, "-i", firstPassVideo.Name(), "-i", slideshow.Audio, "-vf", "tpad=stop_mode=clone:stop_duration=999999999")
+			audioDuration := getDuration(slideshow.Audio) + 1
+			secondPassArgs = append(secondPassArgs, "-i", firstPassVideo.Name(), "-i", slideshow.Audio, "-vf", fmt.Sprintf("tpad=stop_mode=clone:stop_duration=%f", audioDuration))
 		} else {
 			secondPassArgs = append(secondPassArgs, "-stream_loop", "-1", "-i", firstPassVideo.Name(), "-i", slideshow.Audio)
 		}
