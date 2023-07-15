@@ -30,6 +30,10 @@ func (bot *Bot) HandleMessage(msg *tbot.Message, output_msg_chan chan<- *VideoMe
 	}
 
 	result := bot.handleRequest(tiktokLink)
+	if result == nil {
+		log.Println("Couldn't get the video.")
+		return
+	}
 
 	vConfig := tbot.NewVideo(msg.Chat.ID, tbot.FilePath(*result))
 	vConfig.ReplyToMessageID = msg.MessageID
@@ -83,6 +87,8 @@ func (bot *Bot) handleRequest(url *url.URL) *string {
 		response_video := slideshow.GenerateVideo()
 		log.Println(response_video)
 		return &response_video
+	case "error":
+		log.Println("Error: ", responseJson["text"])
 	}
 
 	return nil
