@@ -1,11 +1,10 @@
 # No Bullshit TT Bot
 
-A bot that download tiktoks (supports tiktoks with only images).
+A bot that download tiktoks (both videos and image sequences).
 
-I got tired of the spam the ones available send.
+I got tired of the amount of spam I received from the available sources.
 
-Using the neat [Cobalt
-API](https://github.com/wukko/cobalt/blob/current/docs/API.md)
+Using the neat [Cobalt API](https://github.com/wukko/cobalt/blob/current/docs/API.md)
 
 Rewritten in golang for that extra perf™
 
