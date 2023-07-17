@@ -72,7 +72,7 @@ func getLongestDuration(video, audio string) string {
 }
 
 // This function builds the slideshow using FFmpeg. It returns the filepath of the output.
-func (slideshow *Slideshow) GenerateVideo() string {
+func (slideshow *Slideshow) GenerateVideo() *string {
 	firstPassVideo, _ := os.CreateTemp("", "*.mp4")
 	firstPassVideo.Close()
 
@@ -100,7 +100,11 @@ func (slideshow *Slideshow) GenerateVideo() string {
 	args = append(args, filter[1:], "-map", last_out, "-r", "60", "-pix_fmt", "yuv420p", "-c:v", "libx264", "-an", "-y", firstPassVideo.Name())
 
 	log.Println("Generating first pass video...")
-	exec.Command("ffmpeg", args...).Run()
+	err := exec.Command("ffmpeg", args...).Run()
+	if err != nil {
+		log.Println("Error generating first pass video: ", err)
+		return nil
+	}
 
 	secondPassVideo, _ := os.CreateTemp("", "*.mp4")
 	secondPassVideo.Close()
@@ -129,12 +133,20 @@ func (slideshow *Slideshow) GenerateVideo() string {
 	// In here we use a lot of shenanigans to avoid some of the bufferings FFMPEG does, with the
 	// max_interleave_delta we make sure to avoid extending the video more than we need.
 	log.Println("Longest: ", longest, " Generating second pass video...")
-	exec.Command("ffmpeg", secondPassArgs...).Run()
+
+	err = exec.Command("ffmpeg", secondPassArgs...).Run()
+	if err != nil {
+		log.Println("Error generating second pass video: ", err)
+		return nil
+	}
+
+	secondPassVideoName := secondPassVideo.Name()
+	log.Println("Second pass video generated successfully, ", secondPassVideoName)
 
 	// Now we can cleanup the files.
 	slideshow.Cleanup()
 	os.Remove(firstPassVideo.Name())
-	return secondPassVideo.Name()
+	return &secondPassVideoName
 }
 
 // Remove both the images and the audio from the filesystem.

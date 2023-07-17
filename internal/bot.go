@@ -3,18 +3,20 @@ package internal
 import (
 	"log"
 	"net/url"
+	"os"
 	"strings"
 
 	tbot "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type Bot struct {
-	api *CobaltAPI
+	api        *CobaltAPI
+	dispatcher chan *VideoMessage
 }
 
 func NewBot(url string) *Bot {
 	api := NewAPI(url)
-	return &Bot{api: api}
+	return &Bot{api: api, dispatcher: make(chan *VideoMessage)}
 }
 
 type VideoMessage struct {
@@ -22,7 +24,7 @@ type VideoMessage struct {
 	Msg  tbot.VideoConfig
 }
 
-func (bot *Bot) HandleMessage(msg *tbot.Message, output_msg_chan chan<- *VideoMessage) {
+func (bot *Bot) HandleMessage(msg *tbot.Message) {
 	tiktokLink := bot.containsTiktokLink(msg.Text)
 	if tiktokLink == nil {
 		log.Println("The message did not contain a tiktok link.")
@@ -39,7 +41,7 @@ func (bot *Bot) HandleMessage(msg *tbot.Message, output_msg_chan chan<- *VideoMe
 	vConfig.ReplyToMessageID = msg.MessageID
 
 	output_msg := VideoMessage{Name: *result, Msg: vConfig}
-	output_msg_chan <- &output_msg
+	bot.dispatcher <- &output_msg
 }
 
 // If no tiktok link is found, it'll return a nil pointer.
@@ -70,6 +72,16 @@ func (bot *Bot) containsTiktokLink(msg string) *url.URL {
 	return u
 }
 
+// This function will be in charge of sending the messages. This function locks, it is suggested to run it with
+// a goroutine.
+func (b *Bot) RunDispatcher(bot *tbot.BotAPI) {
+	for {
+		result := <-b.dispatcher
+		bot.Send(result.Msg)
+		os.Remove(result.Name)
+	}
+}
+
 // This function handles if the url is either a stream or a picker, and returns
 // a video file accordingly. In case it cannot get the video, it simply returns a nil pointer.
 func (bot *Bot) handleRequest(url *url.URL) *string {
@@ -87,8 +99,7 @@ func (bot *Bot) handleRequest(url *url.URL) *string {
 		}
 
 		response_video := slideshow.GenerateVideo()
-		log.Println(response_video)
-		return &response_video
+		return response_video
 	case "error":
 		log.Println("Error: ", responseJson["text"])
 	}

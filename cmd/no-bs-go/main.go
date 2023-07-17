@@ -19,17 +19,10 @@ func main() {
 
 	updates := bot.GetUpdatesChan(u)
 
-	output_msg := make(chan *internal_bot.VideoMessage)
 	bot_handler := internal_bot.NewBot("https://co.wuk.sh/")
 
 	// Run the dispatcher
-	go func() {
-		for {
-			result := <-output_msg
-			bot.Send(result.Msg)
-			os.Remove(result.Name)
-		}
-	}()
+	go bot_handler.RunDispatcher(bot)
 
 	log.Println("Starting to get messages.")
 	for update := range updates {
@@ -37,6 +30,6 @@ func main() {
 			continue
 		}
 
-		go bot_handler.HandleMessage(update.Message, output_msg)
+		go bot_handler.HandleMessage(update.Message)
 	}
 }
