@@ -14,7 +14,7 @@ type Slideshow struct {
 	Audio  string
 }
 
-const IMAGE_DURATION = 3
+const IMAGE_DURATION = 4
 const TRANSITION_DURATION = 0.25
 
 // This will build a *Slideshow from a request. It will download the images and audio.
@@ -85,19 +85,20 @@ func (slideshow *Slideshow) GenerateVideo() *string {
 	args = append(args, "-filter_complex")
 	// Build the filter complex pipeline.
 	last_out := "[img0]"
-	filter := ""
+	var filterBuilder strings.Builder
 	// First, we resize all images to 1080x1920.
 	for i := 0; i < len(slideshow.Images); i++ {
-		filter = fmt.Sprintf("%s;[%d]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:-1:-1,setsar=1,format=yuv420p[img%d]", filter, i, i)
+		filterBuilder.WriteString(fmt.Sprintf("[%d]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:-1:-1,setsar=1,format=yuv420p[img%d];", i, i))
 	}
 
 	// Then, we join all the images using the transition slideleft.
 	for i := 1; i < len(slideshow.Images); i++ {
-		filter = fmt.Sprintf("%s;%s[img%d]xfade=transition=slideleft:duration=%f:offset=%f[f%d]", filter, last_out, i, TRANSITION_DURATION, (IMAGE_DURATION-TRANSITION_DURATION)*float32(i), i-1)
+		filterBuilder.WriteString(fmt.Sprintf("%s[img%d]xfade=transition=slideleft:duration=%f:offset=%f[f%d];", last_out, i, TRANSITION_DURATION, (IMAGE_DURATION-TRANSITION_DURATION)*float32(i), i-1))
 		last_out = fmt.Sprintf("[f%d]", i-1)
 	}
 
-	args = append(args, filter[1:], "-map", last_out, "-r", "60", "-pix_fmt", "yuv420p", "-c:v", "libx264", "-an", "-y", firstPassVideo.Name())
+	filter := strings.TrimRight(filterBuilder.String(), ";")
+	args = append(args, filter, "-map", last_out, "-r", "60", "-pix_fmt", "yuv420p", "-c:v", "libx264", "-an", "-y", firstPassVideo.Name())
 
 	log.Println("Generating first pass video...")
 	err := exec.Command("ffmpeg", args...).Run()
