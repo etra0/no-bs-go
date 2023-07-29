@@ -76,7 +76,7 @@ func (slideshow *Slideshow) GenerateVideo() *string {
 	firstPassVideo, _ := os.CreateTemp("", "*.mp4")
 	firstPassVideo.Close()
 
-	args := make([]string, 0)
+	var args []string
 
 	for _, image := range slideshow.Images {
 		args = append(args, "-loop", "1", "-t", strconv.Itoa(IMAGE_DURATION), "-i", image)
