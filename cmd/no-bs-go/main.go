@@ -21,7 +21,6 @@ func main() {
 
 	bot_handler := internal_bot.NewBot("https://co.wuk.sh/")
 
-	// Run the dispatcher
 	go bot_handler.RunDispatcher(bot)
 
 	log.Println("Starting to get messages.")

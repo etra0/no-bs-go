@@ -102,6 +102,8 @@ func (bot *Bot) handleRequest(url *url.URL) *string {
 		return response_video
 	case "error":
 		log.Println("Error: ", responseJson["text"])
+	default:
+		log.Println("Unknown status: ", responseJson["status"])
 	}
 
 	return nil
