@@ -27,7 +27,6 @@ type VideoMessage struct {
 func (bot *Bot) HandleMessage(msg *tbot.Message) {
 	tiktokLink := bot.containsTiktokLink(msg.Text)
 	if tiktokLink == nil {
-		log.Println("The message did not contain a tiktok link.")
 		return
 	}
 
