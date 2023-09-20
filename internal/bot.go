@@ -85,6 +85,9 @@ func (b *Bot) RunDispatcher(bot *tbot.BotAPI) {
 // a video file accordingly. In case it cannot get the video, it simply returns a nil pointer.
 func (bot *Bot) handleRequest(url *url.URL) *string {
 	responseJson := bot.api.RequestTiktokInfo(url)
+	if responseJson == nil {
+		return nil
+	}
 
 	switch responseJson["status"] {
 	case "stream":

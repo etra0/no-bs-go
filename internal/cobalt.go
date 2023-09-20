@@ -34,7 +34,9 @@ func (api *CobaltAPI) RequestTiktokInfo(url *url.URL) map[string]interface{} {
 	response.Body.Close()
 	var responseJson map[string]interface{}
 	if err := json.Unmarshal(buff, &responseJson); err != nil {
-		panic(err)
+		log.Println("Got the following response: ", string(buff))
+		log.Println("Error while unmarshalling json: ", err)
+		return nil
 	}
 
 	return responseJson
